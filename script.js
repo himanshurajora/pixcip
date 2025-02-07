@@ -4,6 +4,13 @@ class PixelCipher {
         this.ctx = this.canvas.getContext('2d');
         this.originalImageData = null;
         this.currentImageData = null;
+        this.isImageTransformed = false;
+        this.transformBtn = document.getElementById('transformBtn');
+        this.revertBtn = document.getElementById('revertBtn');
+        
+        // Initially disable revert button
+        this.revertBtn.disabled = true;
+        this.revertBtn.classList.add('opacity-50', 'cursor-not-allowed');
         this.setupEventListeners();
         this.setupThemeToggle();
         this.setupImageUI();
@@ -68,27 +75,52 @@ class PixelCipher {
                 this.handleImageUpload(e);
                 // Focus on secret key input
                 secretKeyInput.focus();
+                
+                // Enable both buttons when new image is selected
+                this.enableTransformButton();
+                this.enableRevertButton();
+                this.isImageTransformed = false;
+
+                // Hide image actions for new image
+                const imageActions = document.getElementById('imageActions');
+                imageActions.classList.add('opacity-0');
+                imageActions.classList.remove('opacity-100');
             }
         });
 
         // Share button click
         shareBtn.addEventListener('click', async () => {
             try {
-                const blob = await new Promise(resolve => this.canvas.toBlob(resolve));
+                const blob = await new Promise(resolve => this.canvas.toBlob(resolve, 'image/png'));
                 const file = new File([blob], 'encrypted-image.png', { type: 'image/png' });
                 
-                if (navigator.share) {
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    // Use native share on supported mobile devices
                     await navigator.share({
                         files: [file],
-                        title: 'Encrypted Image',
+                        title: 'Encrypted Image from PixelCipher',
                         text: 'Check out this encrypted image!'
                     });
+                } else if (navigator.share) {
+                    // Fallback to URL sharing if file sharing is not supported
+                    const dataUrl = this.canvas.toDataURL('image/png');
+                    await navigator.share({
+                        title: 'Encrypted Image from PixelCipher',
+                        text: 'Check out this encrypted image!',
+                        url: window.location.href
+                    });
                 } else {
-                    // Fallback for browsers that don't support sharing
+                    // Fallback for desktop or unsupported browsers
                     this.downloadImage();
+                    this.showToast('Share not supported on this device. Image downloaded instead.');
                 }
             } catch (error) {
                 console.error('Error sharing:', error);
+                if (error.name === 'AbortError') {
+                    // User cancelled sharing
+                    return;
+                }
+                this.showToast('Failed to share. Try downloading instead.');
             }
         });
 
@@ -149,7 +181,7 @@ class PixelCipher {
 
         const secretKey = document.getElementById('secretKey').value;
         if (!secretKey) {
-            alert('Please enter a secret key');
+            this.showToast('Please enter a secret key');
             return;
         }
 
@@ -193,15 +225,21 @@ class PixelCipher {
                 this.currentImageData.height
             );
 
+            // Update button states after successful transformation
+            this.disableTransformButton();
+            this.enableRevertButton();
+            this.isImageTransformed = true;
+
             // Show image actions after encryption
             const imageActions = document.getElementById('imageActions');
             imageActions.classList.remove('opacity-0');
             imageActions.classList.add('opacity-100');
 
             this.ctx.putImageData(this.currentImageData, 0, 0);
+            this.showToast('Image transformed successfully');
         } catch (error) {
             console.error('Encryption failed:', error);
-            alert('Encryption failed. Please try again.');
+            this.showToast('Encryption failed. Please try again.');
         }
     }
 
@@ -210,7 +248,7 @@ class PixelCipher {
 
         const secretKey = document.getElementById('secretKey').value;
         if (!secretKey) {
-            alert('Please enter the same secret key used for transformation');
+            this.showToast('Please enter the same secret key used for transformation');
             return;
         }
 
@@ -236,15 +274,20 @@ class PixelCipher {
                 this.currentImageData.height
             );
 
+            // Update button states after successful reversion
+            this.enableTransformButton();
+            this.disableRevertButton();
+
             // Hide image actions after decryption
             const imageActions = document.getElementById('imageActions');
             imageActions.classList.add('opacity-0');
             imageActions.classList.remove('opacity-100');
 
             this.ctx.putImageData(this.currentImageData, 0, 0);
+            this.showToast('Image restored successfully');
         } catch (error) {
             console.error('Decryption failed:', error);
-            alert('Decryption failed. Please make sure you are using the correct key.');
+            this.showToast('Decryption failed. Please make sure you are using the correct key.');
         }
     }
 
@@ -253,6 +296,76 @@ class PixelCipher {
         link.download = 'pixel-cipher-image.png';
         link.href = this.canvas.toDataURL('image/png');
         link.click();
+        this.showToast('Image downloaded successfully');
+    }
+
+    enableTransformButton() {
+        this.transformBtn.disabled = false;
+        this.transformBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    disableTransformButton() {
+        this.transformBtn.disabled = true;
+        this.transformBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    enableRevertButton() {
+        this.revertBtn.disabled = false;
+        this.revertBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    disableRevertButton() {
+        this.revertBtn.disabled = true;
+        this.revertBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // Enhance the toast to support different types
+    showToast(message, type = 'info') {
+        // Remove existing toast if any
+        const existingToast = document.querySelector('.toast-notification');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast-notification fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg 
+                          backdrop-blur-xl border border-white/20 dark:border-white/10 text-sm shadow-lg
+                          transition-all duration-300 z-50`;
+
+        // Add type-specific styles
+        switch (type) {
+            case 'error':
+                toast.className += ' bg-red-500/10 dark:bg-red-900/30 text-red-700 dark:text-red-200';
+                break;
+            case 'success':
+                toast.className += ' bg-green-500/10 dark:bg-green-900/30 text-green-700 dark:text-green-200';
+                break;
+            default: // info
+                toast.className += ' bg-white/10 dark:bg-black/30 text-sky-700 dark:text-gray-200';
+        }
+
+        toast.textContent = message;
+
+        // Add to document
+        document.body.appendChild(toast);
+
+        // Set initial opacity to 0
+        toast.style.opacity = '0';
+        toast.style.transform = 'translate(-50%, 20px)';
+
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+        });
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 }
 
