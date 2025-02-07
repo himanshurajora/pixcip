@@ -1,7 +1,17 @@
 class PixelCipher {
     constructor() {
-        this.canvas = document.getElementById('imageCanvas');
-        this.ctx = this.canvas.getContext('2d');
+        // Visible preview canvas
+        this.previewCanvas = document.getElementById('imageCanvas');
+        this.previewCtx = this.previewCanvas.getContext('2d');
+
+        // Hidden processing canvas
+        this.processingCanvas = document.createElement('canvas');
+        this.processingCtx = this.processingCanvas.getContext('2d');
+
+        // Fixed dimensions for preview
+        this.PREVIEW_WIDTH = 600;  // or any desired width
+        this.PREVIEW_HEIGHT = 400; // or any desired height
+
         this.originalImageData = null;
         this.currentImageData = null;
         this.isImageTransformed = false;
@@ -91,7 +101,9 @@ class PixelCipher {
         // Share button click
         shareBtn.addEventListener('click', async () => {
             try {
-                const blob = await new Promise(resolve => this.canvas.toBlob(resolve, 'image/png'));
+                const blob = await new Promise(resolve => 
+                    this.processingCanvas.toBlob(resolve, 'image/png')
+                );
                 const file = new File([blob], 'encrypted-image.png', { type: 'image/png' });
                 
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -103,7 +115,7 @@ class PixelCipher {
                     });
                 } else if (navigator.share) {
                     // Fallback to URL sharing if file sharing is not supported
-                    const dataUrl = this.canvas.toDataURL('image/png');
+                    const dataUrl = this.processingCanvas.toDataURL('image/png');
                     await navigator.share({
                         title: 'Encrypted Image from PixelCipher',
                         text: 'Check out this encrypted image!',
@@ -138,11 +150,56 @@ class PixelCipher {
         img.src = URL.createObjectURL(file);
         
         img.onload = () => {
-            this.canvas.width = img.width;
-            this.canvas.height = img.height;
-            this.ctx.drawImage(img, 0, 0);
-            this.originalImageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-            this.currentImageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+            // Set processing canvas to actual image dimensions
+            this.processingCanvas.width = img.width;
+            this.processingCanvas.height = img.height;
+            this.processingCtx.drawImage(img, 0, 0);
+
+            // Store original data from processing canvas
+            this.originalImageData = this.processingCtx.getImageData(
+                0, 0, 
+                this.processingCanvas.width, 
+                this.processingCanvas.height
+            );
+            this.currentImageData = new ImageData(
+                new Uint8ClampedArray(this.originalImageData.data),
+                this.processingCanvas.width,
+                this.processingCanvas.height
+            );
+
+            // Calculate scaled dimensions maintaining aspect ratio
+            const { width, height } = this.calculateAspectRatio(
+                img.width,
+                img.height,
+                this.PREVIEW_WIDTH,
+                this.PREVIEW_HEIGHT
+            );
+
+            // Set preview canvas dimensions
+            this.previewCanvas.width = width;
+            this.previewCanvas.height = height;
+
+            // Clear preview canvas
+            this.previewCtx.clearRect(0, 0, width, height);
+
+            // Draw scaled image on preview canvas
+            this.previewCtx.drawImage(
+                this.processingCanvas,
+                0, 0,
+                this.processingCanvas.width,
+                this.processingCanvas.height,
+                0, 0,
+                width,
+                height
+            );
+        };
+    }
+
+    calculateAspectRatio(imgWidth, imgHeight, maxWidth, maxHeight) {
+        const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+        return {
+            width: Math.round(imgWidth * ratio),
+            height: Math.round(imgHeight * ratio)
         };
     }
 
@@ -181,7 +238,7 @@ class PixelCipher {
 
         const secretKey = document.getElementById('secretKey').value;
         if (!secretKey) {
-            this.showToast('Please enter a secret key');
+            this.showToast('Please enter a secret key', 'error');
             return;
         }
 
@@ -225,6 +282,23 @@ class PixelCipher {
                 this.currentImageData.height
             );
 
+            // Update processing canvas
+            this.processingCtx.putImageData(this.currentImageData, 0, 0);
+
+            // Clear preview canvas before drawing
+            this.previewCtx.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
+
+            // Draw scaled encrypted image to preview canvas
+            this.previewCtx.drawImage(
+                this.processingCanvas,
+                0, 0,
+                this.processingCanvas.width,
+                this.processingCanvas.height,
+                0, 0,
+                this.previewCanvas.width,
+                this.previewCanvas.height
+            );
+
             // Update button states after successful transformation
             this.disableTransformButton();
             this.enableRevertButton();
@@ -235,11 +309,10 @@ class PixelCipher {
             imageActions.classList.remove('opacity-0');
             imageActions.classList.add('opacity-100');
 
-            this.ctx.putImageData(this.currentImageData, 0, 0);
-            this.showToast('Image transformed successfully');
+            this.showToast('Image transformed successfully', 'success');
         } catch (error) {
             console.error('Encryption failed:', error);
-            this.showToast('Encryption failed. Please try again.');
+            this.showToast('Encryption failed. Please try again.', 'error');
         }
     }
 
@@ -248,7 +321,7 @@ class PixelCipher {
 
         const secretKey = document.getElementById('secretKey').value;
         if (!secretKey) {
-            this.showToast('Please enter the same secret key used for transformation');
+            this.showToast('Please enter the same secret key used for transformation', 'error');
             return;
         }
 
@@ -274,6 +347,20 @@ class PixelCipher {
                 this.currentImageData.height
             );
 
+            // Update processing canvas
+            this.processingCtx.putImageData(this.currentImageData, 0, 0);
+
+            // Scale and draw to preview canvas
+            this.previewCtx.drawImage(
+                this.processingCanvas,
+                0, 0,
+                this.processingCanvas.width,
+                this.processingCanvas.height,
+                0, 0,
+                this.previewCanvas.width,
+                this.previewCanvas.height
+            );
+
             // Update button states after successful reversion
             this.enableTransformButton();
             this.disableRevertButton();
@@ -283,20 +370,20 @@ class PixelCipher {
             imageActions.classList.add('opacity-0');
             imageActions.classList.remove('opacity-100');
 
-            this.ctx.putImageData(this.currentImageData, 0, 0);
-            this.showToast('Image restored successfully');
+            this.showToast('Image restored successfully', 'success');
         } catch (error) {
             console.error('Decryption failed:', error);
-            this.showToast('Decryption failed. Please make sure you are using the correct key.');
+            this.showToast('Decryption failed. Please make sure you are using the correct key.', 'error');
         }
     }
 
     downloadImage() {
+        // Use the processing canvas for download to maintain original quality
         const link = document.createElement('a');
         link.download = 'pixel-cipher-image.png';
-        link.href = this.canvas.toDataURL('image/png');
+        link.href = this.processingCanvas.toDataURL('image/png');
         link.click();
-        this.showToast('Image downloaded successfully');
+        this.showToast('Image downloaded successfully', 'success');
     }
 
     enableTransformButton() {
