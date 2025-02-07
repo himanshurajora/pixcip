@@ -1,67 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PixelCipher</title>
-    <!-- Add Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        glass: {
+                            light: 'rgba(255, 255, 255, 0.15)',
+                            dark: 'rgba(15, 23, 42, 0.15)'
+                        }
+                    },
+                    backdropBlur: {
+                        'xl': '20px'
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
-    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">PixelCipher</h1>
-        
-        <div class="mb-8">
-            <label class="block mb-4">
-                <span class="sr-only">Choose an image</span>
-                <input type="file" 
-                       id="imageInput" 
-                       accept="image/*"
-                       class="block w-full text-sm text-gray-500
-                              file:mr-4 file:py-2 file:px-4
-                              file:rounded-md file:border-0
-                              file:text-sm file:font-semibold
-                              file:bg-blue-50 file:text-blue-700
-                              hover:file:bg-blue-100">
-            </label>
-            <div class="preview-container mt-4">
-                <canvas id="imageCanvas" 
-                        class="max-w-full border-2 border-dashed border-gray-300 rounded-lg">
-                </canvas>
-            </div>
-        </div>
+<body class="min-h-screen p-4 bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900 dark:to-blue-900 transition-colors duration-300">
+    <div class="relative max-w-2xl mx-auto">
+        <!-- Theme Toggle -->
+        <button id="themeToggle" class="absolute -top-2 -right-2 p-2 rounded-full bg-glass-light dark:bg-glass-dark backdrop-blur-xl border border-white/20 dark:border-white/10 text-sky-700 dark:text-sky-300 shadow-lg z-10">
+            <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+            <svg class="w-5 h-5 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+            </svg>
+        </button>
 
-        <div class="space-y-4">
-            <input type="text" 
-                   id="secretKey" 
-                   placeholder="Enter secret key"
-                   class="w-full px-4 py-2 border border-gray-300 rounded-md 
-                          focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <!-- Main Container -->
+        <div class="bg-glass-light dark:bg-glass-dark backdrop-blur-xl rounded-2xl border border-white/20 dark:border-white/10 p-6 shadow-xl">
+            <h1 class="text-3xl font-bold text-center bg-gradient-to-r from-sky-600 to-blue-600 dark:from-sky-400 dark:to-blue-400 bg-clip-text text-transparent mb-6">
+                PixelCipher
+            </h1>
             
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button id="transformBtn"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md
-                               hover:bg-blue-700 transition-colors
-                               focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    Transform Image
-                </button>
+            <!-- Image Section -->
+            <div class="mb-6 relative group">
+                <div id="uploadPrompt" class="h-48 flex items-center justify-center border-2 border-dashed border-sky-400/50 dark:border-sky-500/50 rounded-xl overflow-hidden group-hover:border-sky-500 dark:group-hover:border-sky-400 transition-colors">
+                    <div class="text-center p-4">
+                        <svg class="mx-auto h-10 w-10 text-sky-500/70 dark:text-sky-400/70 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-sm text-sky-600 dark:text-sky-300">
+                            Click to select an image
+                        </p>
+                    </div>
+                </div>
+
+                <div id="previewContainer" class="hidden relative group">
+                    <canvas id="imageCanvas" class="w-full rounded-xl shadow-lg"></canvas>
+                    
+                    <!-- Reselect button (top-right) -->
+                    <button id="reselectBtn" class="absolute top-2 right-2 p-1.5 rounded-lg bg-glass-light dark:bg-glass-dark backdrop-blur-xl border border-white/20 dark:border-white/10 text-sky-600 dark:text-sky-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white/30 dark:hover:bg-white/10">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Action buttons (bottom-right) -->
+                    <div id="imageActions" class="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button id="shareBtn" class="p-1.5 rounded-lg bg-glass-light dark:bg-glass-dark backdrop-blur-xl border border-white/20 dark:border-white/10 text-sky-600 dark:text-sky-300 hover:bg-white/30 dark:hover:bg-white/10">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                            </svg>
+                        </button>
+                        <button id="imageDownloadBtn" class="p-1.5 rounded-lg bg-glass-light dark:bg-glass-dark backdrop-blur-xl border border-white/20 dark:border-white/10 text-sky-600 dark:text-sky-300 hover:bg-white/30 dark:hover:bg-white/10">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
                 
-                <button id="revertBtn"
-                        class="px-4 py-2 bg-green-600 text-white rounded-md
-                               hover:bg-green-700 transition-colors
-                               focus:outline-none focus:ring-2 focus:ring-green-500">
-                    Revert Image
-                </button>
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" 
+                           id="secretKey" 
+                           placeholder="Enter secret key"
+                           class="w-full px-4 py-2.5 bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/50 text-sky-900 dark:text-sky-100 placeholder-sky-600/50 dark:placeholder-sky-400/50 text-sm">
+                </div>
                 
-                <button id="downloadBtn"
-                        class="px-4 py-2 bg-purple-600 text-white rounded-md
-                               hover:bg-purple-700 transition-colors
-                               focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    Download Image
-                </button>
+                <div class="grid grid-cols-3 gap-3">
+                    <button id="transformBtn"
+                            class="px-4 py-2 bg-sky-500/80 hover:bg-sky-600/80 text-white rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-sm font-medium">
+                        Transform
+                    </button>
+                    
+                    <button id="revertBtn"
+                            class="px-4 py-2 bg-blue-500/80 hover:bg-blue-600/80 text-white rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-sm font-medium">
+                        Revert
+                    </button>
+                    
+                    <button id="downloadBtn"
+                            class="px-4 py-2 bg-sky-600/80 hover:bg-sky-700/80 text-white rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-sm font-medium">
+                        Download
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html> 

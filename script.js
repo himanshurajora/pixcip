@@ -5,6 +5,8 @@ class PixelCipher {
         this.originalImageData = null;
         this.currentImageData = null;
         this.setupEventListeners();
+        this.setupThemeToggle();
+        this.setupImageUI();
     }
 
     setupEventListeners() {
@@ -12,6 +14,88 @@ class PixelCipher {
         document.getElementById('transformBtn').addEventListener('click', () => this.transformImage());
         document.getElementById('revertBtn').addEventListener('click', () => this.revertImage());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadImage());
+    }
+
+    setupThemeToggle() {
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // Check for saved theme preference or use system preference
+        if (localStorage.theme === 'dark' || 
+            (!('theme' in localStorage) && 
+             window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            
+            // Save preference
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        });
+    }
+
+    setupImageUI() {
+        const uploadPrompt = document.getElementById('uploadPrompt');
+        const previewContainer = document.getElementById('previewContainer');
+        const reselectBtn = document.getElementById('reselectBtn');
+        const imageInput = document.getElementById('imageInput');
+        const secretKeyInput = document.getElementById('secretKey');
+        const shareBtn = document.getElementById('shareBtn');
+        const imageDownloadBtn = document.getElementById('imageDownloadBtn');
+
+        // Click on upload prompt
+        uploadPrompt.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        // Click on reselect button
+        reselectBtn.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        // When image is selected
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                uploadPrompt.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                this.handleImageUpload(e);
+                // Focus on secret key input
+                secretKeyInput.focus();
+            }
+        });
+
+        // Share button click
+        shareBtn.addEventListener('click', async () => {
+            try {
+                const blob = await new Promise(resolve => this.canvas.toBlob(resolve));
+                const file = new File([blob], 'encrypted-image.png', { type: 'image/png' });
+                
+                if (navigator.share) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Encrypted Image',
+                        text: 'Check out this encrypted image!'
+                    });
+                } else {
+                    // Fallback for browsers that don't support sharing
+                    this.downloadImage();
+                }
+            } catch (error) {
+                console.error('Error sharing:', error);
+            }
+        });
+
+        // Image download button click
+        imageDownloadBtn.addEventListener('click', () => {
+            this.downloadImage();
+        });
     }
 
     async handleImageUpload(event) {
@@ -109,6 +193,11 @@ class PixelCipher {
                 this.currentImageData.height
             );
 
+            // Show image actions after encryption
+            const imageActions = document.getElementById('imageActions');
+            imageActions.classList.remove('opacity-0');
+            imageActions.classList.add('opacity-100');
+
             this.ctx.putImageData(this.currentImageData, 0, 0);
         } catch (error) {
             console.error('Encryption failed:', error);
@@ -146,6 +235,11 @@ class PixelCipher {
                 this.currentImageData.width,
                 this.currentImageData.height
             );
+
+            // Hide image actions after decryption
+            const imageActions = document.getElementById('imageActions');
+            imageActions.classList.add('opacity-0');
+            imageActions.classList.remove('opacity-100');
 
             this.ctx.putImageData(this.currentImageData, 0, 0);
         } catch (error) {
